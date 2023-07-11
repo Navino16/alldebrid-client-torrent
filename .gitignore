@@ -107,3 +107,4 @@ dist
 build/
 sonarr/
 .idea/
+alldebrid-client.db

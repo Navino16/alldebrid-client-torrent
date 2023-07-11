@@ -1,14 +1,15 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { logger, morganLogger } from './Utils';
 import Constants from './Constants';
-import { AppRoutes } from './Routes';
+import { AppRoutes, TorrentRoutes } from './Routes';
+import { AppDataSource } from './AppDataSource';
 
 logger.debug('[app.ts - Express]: Create application');
 const app = express();
 
-// logger.debug('[app.ts - Express]: Configure application to only accept JSON');
-// app.use(express.json());
-// app.use(express.urlencoded({ extended: false }));
+logger.debug('[app.ts - Express]: Configure application to only accept JSON');
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // Configure authorized methods
 logger.debug('[app.ts - Express]: Configure authorized methods');
@@ -22,6 +23,7 @@ app.use(morganLogger);
 
 logger.debug('[app.ts - Express]: Set routes');
 app.use('/api/v2/app', AppRoutes);
+app.use('/api/v2/torrents', TorrentRoutes);
 
 // Define error middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -39,16 +41,20 @@ app.use((req: Request, res: Response) => {
   res.status(404).send('404 - Not Found');
 });
 
-logger.debug('[app.ts - Express]: Start listening');
-app.listen(Constants.PORT, () => {
-  logger.info(
-    '[app.ts - Express]: App is running at http://localhost:%d in mode %s',
-    Constants.PORT,
-    Constants.NODE_ENV,
-  );
-  logger.info('[app.ts - Express]: Press CTRL-C to stop');
-  app.emit('ServerReady');
-});
+// Connect to database
+logger.debug('[app.ts - TypeORM]: Connect to database');
+AppDataSource.initialize().then(() => {
+  logger.debug('[app.ts - Express]: Start listening');
+  app.listen(Constants.PORT, () => {
+    logger.info(
+      '[app.ts - Express]: App is running at http://localhost:%d in mode %s',
+      Constants.PORT,
+      Constants.NODE_ENV,
+    );
+    logger.info('[app.ts - Express]: Press CTRL-C to stop');
+    app.emit('ServerReady');
+  });
+}).catch((reason) => { logger.error('[app.ts - TypeORM]:  %s', reason); });
 
 // Catch CTRL-C
 process.on('SIGINT', () => {

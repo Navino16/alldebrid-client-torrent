@@ -3,5 +3,6 @@ declare namespace NodeJS {
     LOG_LEVEL: string;
     NODE_ENV: string
     PORT: string;
+    DATABASE_NAME: string;
   }
 }

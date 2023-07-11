@@ -4,4 +4,6 @@ export default class Constants {
   public static LOG_LEVEL: string = process.env.LOG_LEVEL || 'debug';
 
   public static NODE_ENV: string = process.env.NODE_ENV || 'DEVELOPMENT';
+
+  public static DATABASE_NAME: string = process.env.DATABASE_NAME || 'alldebrid-client.db';
 }
