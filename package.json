@@ -1,0 +1,41 @@
+{
+  "name": "alldebrid-torrent-client",
+  "version": "0.0.1",
+  "description": "A fake torrent client based on qBittorrent for sending files to AllDebrid and download them",
+  "main": "app.js",
+  "scripts": {
+    "build": "rm -rf build/ && npx tsc",
+    "build:dev": "rm -rf build/ && npx tsc --pretty",
+    "build:watch": "rm -rf build/ && npx tsc --pretty -w",
+    "start": "node ./build/app.js",
+    "start:watch": "nodemon ./build/app.js",
+    "lint": "eslint src/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "AllDebrid",
+    "Torrent",
+    "qBittorrent"
+  ],
+  "author": "Navino16",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/morgan": "^1.9.4",
+    "@types/node": "^20.4.1",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.44.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^17.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "morgan": "^1.10.0",
+    "winston": "^3.9.0"
+  }
+}
