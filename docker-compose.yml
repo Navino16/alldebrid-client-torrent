@@ -3,7 +3,7 @@ version: "2.1"
 
 services:
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
+    image: lscr.io/linuxserver/sonarr:develop
     container_name: sonarr
     environment:
       - PUID=1000
@@ -11,6 +11,8 @@ services:
       - TZ=Etc/Paris
     volumes:
       - ./sonarr:/config
+      - ./sonarr/downloads:/downloads
+      - ./sonarr/tv:/tv
     ports:
       - 8989:8989
     network_mode: host
