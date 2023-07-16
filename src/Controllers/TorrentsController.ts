@@ -1,6 +1,9 @@
-import {NextFunction, Request, Response} from 'express';
+import { NextFunction, Request, Response } from 'express';
+import * as fs from 'fs/promises';
 import { logger } from '../Utils';
-import { CategoryEntity, CategoryJSON } from '../Entities';
+import {
+  CategoryEntity, CategoryJSON, TorrentEntity, TorrentInfoJSON,
+} from '../Entities';
 
 export class TorrentsController {
   public static async getCategories(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -40,10 +43,44 @@ export class TorrentsController {
     }
   }
 
-  public static getInfo(req: Request, res: Response, next: NextFunction) {
+  public static async getInfo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/info]: Get all info about torrents');
-      res.status(200).send([]);
+      logger.debug('[Controllers/TorrentsController.ts - GET /api/v2/torrents/info]: Get all info about torrents');
+      const torrentList = await TorrentEntity.find();
+      const result: TorrentInfoJSON[] = [];
+      torrentList.forEach((torrent) => {
+        result.push({
+          hash: torrent.fileHash,
+          category: torrent.category,
+          name: torrent.originalName,
+          size: torrent.fileSize,
+          progress: torrent.progress,
+          eta: torrent.eta,
+        });
+      });
+      res.status(200).send(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async postAdd(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/add]: Adding new torrents');
+      // eslint-disable-next-line no-restricted-syntax
+      for (const file of (req.files as { [torrents: string]: Express.Multer.File[] }).torrents) {
+        const newFilePath = `${file.path}.torrent`;
+        // eslint-disable-next-line no-await-in-loop
+        await fs.rename(file.path, newFilePath);
+        const torrent = TorrentEntity.fromJSON({
+          fileHash: file.filename,
+          originalName: file.originalname,
+          filePath: newFilePath,
+        });
+        // eslint-disable-next-line no-await-in-loop
+        await torrent.save();
+      }
+      res.status(200).send();
     } catch (err) {
       next(err);
     }
