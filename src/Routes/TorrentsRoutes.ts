@@ -9,4 +9,5 @@ router.route('/categories').get(TorrentsController.getCategories);
 router.route('/createCategory').post(TorrentsController.postCreateCategory);
 router.route('/info').get(TorrentsController.getInfo);
 router.route('/add').post(upload.fields([{ name: 'torrents' }]), TorrentsController.postAdd);
+router.route('/delete').post(TorrentsController.postDelete);
 export const TorrentRoutes = router;

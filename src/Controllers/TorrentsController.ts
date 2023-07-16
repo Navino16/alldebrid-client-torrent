@@ -85,4 +85,25 @@ export class TorrentsController {
       next(err);
     }
   }
+
+  public static async postDelete(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/delete]: Deleting torrent');
+      const { deleteFiles, hashes }: { deleteFiles: boolean, hashes: string } = req.body;
+      const hashList = hashes.split('|');
+      // eslint-disable-next-line no-restricted-syntax
+      for (const hash of hashList) {
+        // eslint-disable-next-line no-await-in-loop
+        const torrent = await TorrentEntity.findOne({ where: { fileHash: hash } });
+        if (torrent) {
+          // TODO: Remove files if deleteFiles is true
+          // eslint-disable-next-line no-await-in-loop
+          await torrent.remove();
+        }
+      }
+      res.status(200).send();
+    } catch (err) {
+      next(err);
+    }
+  }
 }
