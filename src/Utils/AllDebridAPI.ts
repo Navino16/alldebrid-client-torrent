@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import fs from 'fs';
 import { logger } from './Logger';
 
@@ -9,6 +9,10 @@ export interface AllDebridOptions {
 
 export interface FileUploadForm {
   files: fs.ReadStream[]
+}
+
+export interface StatusEndpointQueryParams {
+  id: number;
 }
 
 export interface AllDebridFile {
@@ -23,10 +27,39 @@ export interface AllDebridFile {
   ready?: boolean;
   id: number;
 }
+
+export interface AllDebridLinks {
+  link: string;
+  filename: string;
+  size: number;
+  files: any;
+}
+export interface AllDebridMagnet {
+  id: number;
+  filename: string;
+  size: number;
+  status: string;
+  statusCode: number;
+  downloaded: number;
+  uploaded: number;
+  seeders: number;
+  downloadSpeed: number;
+  uploadSpeed: number;
+  uploadDate: number;
+  completionDate: number;
+  links: AllDebridLinks[];
+}
 export interface FileUploadResult {
   status: string;
   data: {
     files: AllDebridFile[]
+  }
+}
+
+export interface StatusResult {
+  status: string;
+  data: {
+    magnets: AllDebridMagnet
   }
 }
 
@@ -54,12 +87,41 @@ export class AllDebridAPI {
     });
   }
 
+  private async get(endpoint: string, params: StatusEndpointQueryParams | null = null) {
+    const url = this.options.url + endpoint;
+    const axiosConfig: AxiosRequestConfig = {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    };
+    if (params !== null) {
+      axiosConfig.params = params;
+    }
+    axiosConfig.params.agent = this.options.agent;
+    return axios.get(url, axiosConfig);
+  }
+
   public async uploadFile(filePath: string): Promise<FileUploadResult | false> {
     try {
       const res = await this.post('/magnet/upload/file', {
         files: [fs.createReadStream(filePath)],
       });
       return (res.data as FileUploadResult);
+    } catch (err) {
+      logger.error(err);
+      return false;
+    }
+  }
+
+  public async getStatus(allDebridID: number | null = null) {
+    try {
+      let params = null;
+      if (allDebridID !== null) {
+        params = { id: allDebridID };
+      }
+      const res = await this.get('/magnet/status', params);
+      return (res.data as StatusResult);
     } catch (err) {
       logger.error(err);
       return false;

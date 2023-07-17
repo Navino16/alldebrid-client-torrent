@@ -25,6 +25,7 @@ export interface TorrentInfoJSON {
   progress?: number;
   eta?: number;
   state?: TorrentState;
+  links: string[];
 }
 
 export enum TorrentState {
@@ -74,7 +75,7 @@ export class TorrentEntity extends BaseEntity {
   @Column({ type: 'integer', default: 0 })
   public ratio!: number | undefined;
 
-  @Column({ type: 'text', enum: TorrentState, default: TorrentState.PAUSE_DL })
+  @Column({ type: 'text', enum: TorrentState, default: TorrentState.QUEUE_DL })
   public state!: TorrentState | undefined;
 
   @Column({ type: 'integer', default: () => 'CURRENT_TIMESTAMP' })
@@ -82,6 +83,9 @@ export class TorrentEntity extends BaseEntity {
 
   @Column({ type: 'integer', nullable: true })
   public allDebridID: number | undefined;
+
+  @Column({ type: 'simple-array', nullable: true })
+  public links!: string[];
 
   public static fromJSON(json: TorrentJSON) {
     logger.debug('[Entities/TorrentEntity.ts - fromJSON]: Transform JSON object into torrent entity');

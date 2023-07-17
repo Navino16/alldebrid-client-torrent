@@ -51,6 +51,10 @@ export class TorrentsController {
       const torrentList = await TorrentEntity.find({ where: { category: req.params.category } });
       const result: TorrentInfoJSON[] = [];
       torrentList.forEach((torrent) => {
+        const links: string[] = [];
+        torrent.links.forEach((link) => {
+          links.push(link);
+        });
         result.push({
           hash: torrent.fileHash,
           category: torrent.category,
@@ -59,6 +63,7 @@ export class TorrentsController {
           progress: torrent.progress,
           eta: torrent.eta,
           state: torrent.state,
+          links,
         });
       });
       res.status(200).send(result);
@@ -83,7 +88,7 @@ export class TorrentsController {
           originalName: file.originalname,
           filePath: newFilePath,
           fileSize: torrentInfo.length,
-          state: TorrentState.STALLED_DL,
+          state: TorrentState.QUEUE_DL,
         });
         // eslint-disable-next-line no-await-in-loop
         await torrent.save();
