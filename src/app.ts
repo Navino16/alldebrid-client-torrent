@@ -3,6 +3,7 @@ import { logger, morganLogger } from './Utils';
 import Constants from './Constants';
 import { AppRoutes, TorrentRoutes } from './Routes';
 import { AppDataSource } from './AppDataSource';
+import { AllDebrid } from './AllDebrid';
 
 logger.debug('[app.ts - Express]: Create application');
 const app = express();
@@ -52,6 +53,7 @@ AppDataSource.initialize().then(() => {
       Constants.NODE_ENV,
     );
     logger.info('[app.ts - Express]: Press CTRL-C to stop');
+    AllDebrid.setupAllJobs();
     app.emit('ServerReady');
   });
 }).catch((reason) => { logger.error('[app.ts - TypeORM]:  %s', reason); });

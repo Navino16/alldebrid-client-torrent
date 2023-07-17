@@ -1,8 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import * as fs from 'fs/promises';
+import parseTorrent from 'parse-torrent';
+import * as ParseTorrentFile from 'parse-torrent-file';
 import { logger } from '../Utils';
 import {
-  CategoryEntity, CategoryJSON, TorrentEntity, TorrentInfoJSON,
+  CategoryEntity, CategoryJSON, TorrentEntity, TorrentInfoJSON, TorrentState,
 } from '../Entities';
 
 export class TorrentsController {
@@ -46,7 +48,7 @@ export class TorrentsController {
   public static async getInfo(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       logger.debug('[Controllers/TorrentsController.ts - GET /api/v2/torrents/info]: Get all info about torrents');
-      const torrentList = await TorrentEntity.find();
+      const torrentList = await TorrentEntity.find({ where: { category: req.params.category } });
       const result: TorrentInfoJSON[] = [];
       torrentList.forEach((torrent) => {
         result.push({
@@ -56,6 +58,7 @@ export class TorrentsController {
           size: torrent.fileSize,
           progress: torrent.progress,
           eta: torrent.eta,
+          state: torrent.state,
         });
       });
       res.status(200).send(result);
@@ -72,10 +75,15 @@ export class TorrentsController {
         const newFilePath = `${file.path}.torrent`;
         // eslint-disable-next-line no-await-in-loop
         await fs.rename(file.path, newFilePath);
+        // eslint-disable-next-line no-await-in-loop
+        const torrentInfo = (parseTorrent(await fs.readFile(newFilePath)) as ParseTorrentFile.Instance);
         const torrent = TorrentEntity.fromJSON({
-          fileHash: file.filename,
+          fileHash: torrentInfo.infoHash ?? file.filename,
+          category: req.body.category,
           originalName: file.originalname,
           filePath: newFilePath,
+          fileSize: torrentInfo.length,
+          state: TorrentState.STALLED_DL,
         });
         // eslint-disable-next-line no-await-in-loop
         await torrent.save();
