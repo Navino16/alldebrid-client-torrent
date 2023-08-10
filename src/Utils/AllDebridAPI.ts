@@ -15,6 +15,10 @@ export interface StatusEndpointQueryParams {
   id: number;
 }
 
+export interface InstantAvailabilityQueryParams {
+  magnets: string[];
+}
+
 export interface AllDebridFile {
   file: string;
   error?: {
@@ -63,6 +67,20 @@ export interface StatusResult {
   }
 }
 
+export interface InstantAvailabilityMagnet {
+  magnet: string;
+  hash: string;
+  instant: boolean;
+  files: any;
+}
+
+export interface InstantAvailabilityResult {
+  status: string;
+  data: {
+    magnets: InstantAvailabilityMagnet[];
+  }
+}
+
 export class AllDebridAPI {
   private readonly apiKey: string;
 
@@ -87,7 +105,7 @@ export class AllDebridAPI {
     });
   }
 
-  private async get(endpoint: string, params: StatusEndpointQueryParams | null = null) {
+  private async get(endpoint: string, params: StatusEndpointQueryParams | InstantAvailabilityQueryParams | null = null) {
     const url = this.options.url + endpoint;
     const axiosConfig: AxiosRequestConfig = {
       headers: {
@@ -122,6 +140,17 @@ export class AllDebridAPI {
       }
       const res = await this.get('/magnet/status', params);
       return (res.data as StatusResult);
+    } catch (err) {
+      logger.error(err);
+      return false;
+    }
+  }
+
+  public async getInstantAvailability(hash: string) {
+    try {
+      const params = { magnets: [hash] };
+      const res = await this.get('/magnet/instant', params);
+      return (res.data as InstantAvailabilityResult);
     } catch (err) {
       logger.error(err);
       return false;

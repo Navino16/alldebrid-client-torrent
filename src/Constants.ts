@@ -8,4 +8,8 @@ export default class Constants {
   public static DATABASE_NAME: string = process.env.DATABASE_NAME || 'alldebrid-client.db';
 
   public static ALLDEBRID_API_KEY: string = process.env.ALLDEBRID_API_KEY || 'toChange';
+
+  public static QBITTORRENT_URL: string = process.env.QBITTORRENT_URL || 'https://example.com';
+
+  public static QBITTORRENT_COOKIES: string = process.env.QBITTORRENT_URL || '';
 }

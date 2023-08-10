@@ -1,80 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
 import * as fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import parseTorrent from 'parse-torrent';
 import * as ParseTorrentFile from 'parse-torrent-file';
-import { logger } from '../Utils';
-import {
-  CategoryEntity, CategoryJSON, TorrentEntity, TorrentInfoJSON, TorrentState,
-} from '../Entities';
+import axios from 'axios';
+import { AllDebridAPI, logger } from '../Utils';
+import { TorrentEntity, TorrentState } from '../Entities';
+import Constants from '../Constants';
 
 export class TorrentsController {
-  public static async getCategories(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      logger.debug('[Controllers/TorrentsController.ts - GET /api/v2/torrents/categories]: Getting categories');
-      const result = {};
-      const categories = await CategoryEntity.find();
-      categories.forEach((category) => {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        result[category.category] = {
-          name: category.category,
-          savePath: category.savePath,
-        };
-      });
-      res.status(200).send(result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  public static async postCreateCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/createCategory]: Create new category');
-      const existing = await CategoryEntity.findOne(
-        { where: { category: (req.body as CategoryJSON).category } },
-      );
-      if (existing) {
-        res.status(409).send();
-        return;
-      }
-      const category = CategoryEntity.fromJSON((req.body as CategoryJSON));
-      await category.save();
-      res.status(200).send();
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  public static async getInfo(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      logger.debug('[Controllers/TorrentsController.ts - GET /api/v2/torrents/info]: Get all info about torrents');
-      const torrentList = await TorrentEntity.find({ where: { category: req.params.category } });
-      const result: TorrentInfoJSON[] = [];
-      torrentList.forEach((torrent) => {
-        const links: string[] = [];
-        torrent.links.forEach((link) => {
-          links.push(link);
-        });
-        result.push({
-          hash: torrent.fileHash,
-          category: torrent.category,
-          name: torrent.originalName,
-          size: torrent.fileSize,
-          progress: torrent.progress,
-          eta: torrent.eta,
-          state: torrent.state,
-          links,
-        });
-      });
-      res.status(200).send(result);
-    } catch (err) {
-      next(err);
-    }
-  }
-
   public static async postAdd(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/add]: Adding new torrents');
+      Constants.QBITTORRENT_COOKIES = req.headers.cookie ?? '';
+      const api = new AllDebridAPI(Constants.ALLDEBRID_API_KEY);
       // eslint-disable-next-line no-restricted-syntax
       for (const file of (req.files as { [torrents: string]: Express.Multer.File[] }).torrents) {
         const newFilePath = `${file.path}.torrent`;
@@ -82,39 +21,36 @@ export class TorrentsController {
         await fs.rename(file.path, newFilePath);
         // eslint-disable-next-line no-await-in-loop
         const torrentInfo = (parseTorrent(await fs.readFile(newFilePath)) as ParseTorrentFile.Instance);
-        const torrent = TorrentEntity.fromJSON({
-          fileHash: torrentInfo.infoHash ?? file.filename,
-          category: req.body.category,
-          originalName: file.originalname,
-          filePath: newFilePath,
-          fileSize: torrentInfo.length,
-          state: TorrentState.QUEUE_DL,
-        });
         // eslint-disable-next-line no-await-in-loop
-        await torrent.save();
-      }
-      res.status(200).send();
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  public static async postDelete(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/delete]: Deleting torrent');
-      const { deleteFiles, hashes }: { deleteFiles: boolean, hashes: string } = req.body;
-      const hashList = hashes.split('|');
-      // eslint-disable-next-line no-restricted-syntax
-      for (const hash of hashList) {
-        // eslint-disable-next-line no-await-in-loop
-        const torrent = await TorrentEntity.findOne({ where: { fileHash: hash } });
-        if (torrent) {
-          // TODO: Remove files if deleteFiles is true
+        const available = await api.getInstantAvailability(torrentInfo.infoHash ?? '');
+        if (available && available.data.magnets[0].instant) {
+          logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/add]: Torrent is available on AllDebrid');
+          const torrent = TorrentEntity.fromJSON({
+            fileHash: torrentInfo.infoHash ?? file.filename,
+            category: req.body.category,
+            originalName: file.originalname,
+            filePath: newFilePath,
+            state: TorrentState.QUEUE_DL,
+          });
           // eslint-disable-next-line no-await-in-loop
-          await torrent.remove();
+          await torrent.save();
+          res.status(200).send();
+        } else {
+          logger.debug('[Controllers/TorrentsController.ts - POST /api/v2/torrents/add]: Torrent is not available on AllDebrid, sending it to qBittorrent');
+          // eslint-disable-next-line no-await-in-loop
+          const result = await axios.post(`${Constants.QBITTORRENT_URL}/api/v2/torrents/add`, {
+            torrents: [createReadStream(newFilePath)],
+            category: req.body.category,
+            paused: req.body.paused,
+          }, {
+            headers: {
+              Cookie: Constants.QBITTORRENT_COOKIES,
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          res.status(result.status).send();
         }
       }
-      res.status(200).send();
     } catch (err) {
       next(err);
     }

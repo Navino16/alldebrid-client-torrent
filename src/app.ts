@@ -1,16 +1,17 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { logger, morganLogger } from './Utils';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import { logger, morganLogger, Utils } from './Utils';
 import Constants from './Constants';
-import { AppRoutes, TorrentRoutes } from './Routes';
+import { TorrentRoutes } from './Routes';
 import { AppDataSource } from './AppDataSource';
 import { AllDebrid } from './AllDebrid';
 
 logger.debug('[app.ts - Express]: Create application');
 const app = express();
 
-logger.debug('[app.ts - Express]: Configure application to only accept JSON');
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// logger.debug('[app.ts - Express]: Configure application to only accept JSON');
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: false }));
 
 // Configure authorized methods
 logger.debug('[app.ts - Express]: Configure authorized methods');
@@ -23,8 +24,12 @@ logger.debug('[app.ts - Express]: Add request logger');
 app.use(morganLogger);
 
 logger.debug('[app.ts - Express]: Set routes');
-app.use('/api/v2/app', AppRoutes);
 app.use('/api/v2/torrents', TorrentRoutes);
+app.all('*', createProxyMiddleware({
+  target: Constants.QBITTORRENT_URL,
+  changeOrigin: true,
+  logger,
+}));
 
 // Define error middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
